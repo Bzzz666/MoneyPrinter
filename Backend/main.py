@@ -13,6 +13,8 @@ from youtube import upload_video
 from apiclient.errors import HttpError
 from flask import Flask, request, jsonify
 from moviepy.config import change_settings
+from Backend.src.video_processing import VideoProcessor
+from Backend.src.youtube_uploader import YouTubeUploader
 
 
 # Load environment variables
@@ -89,8 +91,10 @@ def generate():
                 }
             )
         
-        voice = data["voice"]
-        voice_prefix = voice[:2]
+        video_processor = VideoProcessor()
+        youtube_uploader = YouTubeUploader()
+        # Extract voice information from request data
+        voice = data.get('voice', 'en_us_001') # Default voice if not provided
 
 
         if not voice:
@@ -218,12 +222,11 @@ def generate():
             subtitles_path = None
 
         # Concatenate videos
-        temp_audio = AudioFileClip(tts_path)
-        combined_video_path = combine_videos(video_paths, temp_audio.duration, 5, n_threads or 2)
+        combined_video_path = video_processor.combine_videos(video_paths, n_threads=n_threads or 2)
 
         # Put everything together
         try:
-            final_video_path = generate_video(combined_video_path, tts_path, subtitles_path, n_threads or 2, subtitles_position)
+            final_video_path = video_processor.generate_video(combined_video_path, tts_path, subtitles_path, n_threads=n_threads or 2, subtitles_position=subtitles_position)
         except Exception as e:
             print(colored(f"[-] Error generating final video: {e}", "red"))
             final_video_path = None
@@ -266,11 +269,11 @@ def generate():
                 # Upload the video to YouTube
                 try:
                     # Unpack the video_metadata dictionary into individual arguments
-                    video_response = upload_video(
-                        video_path=video_metadata['video_path'],
+                    video_response = youtube_uploader.upload_video(
+                        video_file_path=video_metadata['video_path'],
                         title=video_metadata['title'],
                         description=video_metadata['description'],
-                        category=video_metadata['category'],
+                        category_id=video_metadata['category'],
                         keywords=video_metadata['keywords'],
                         privacy_status=video_metadata['privacyStatus']
                     )
