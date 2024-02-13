@@ -24,6 +24,11 @@ cp .env.example .env
 
 # Run the backend server
 cd Backend
+# Activate the virtual environment
+source venv/bin/activate # For Linux/Mac
+venv\Scripts\activate # For Windows
+
+# Run the application
 python main.py
 
 # Run the frontend server
